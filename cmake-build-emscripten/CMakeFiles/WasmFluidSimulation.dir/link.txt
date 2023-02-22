@@ -1,0 +1,1 @@
+/usr/bin/em++  -O3 --bind -s USE_GLFW=3 -s WASM=1 -gsource-map  @CMakeFiles/WasmFluidSimulation.dir/objects1.rsp -o WasmFluidSimulation.html @CMakeFiles/WasmFluidSimulation.dir/linklibs.rsp
