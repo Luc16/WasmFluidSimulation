@@ -34,6 +34,7 @@ public:
     void updateColor(uint32_t idx, float color);
     void updateBuffer();
     void render();
+    size_t size() { return m_vertices.size(); }
 
 private:
 

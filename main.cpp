@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <functional>
 #include <vector>
+#include <chrono>
 #include "Grid2D.h"
 
 template<typename T, size_t size, uint32_t row>
@@ -75,6 +76,19 @@ public:
     static constexpr int WIDTH = 640;
     static constexpr int HEIGHT = 480;
     static constexpr uint32_t SIZE = 10;
+    constexpr static uint32_t numTilesX = WIDTH/SIZE + 1;
+    constexpr static uint32_t numTilesMiddleX = numTilesX - 2;
+    constexpr static uint32_t numTilesY = HEIGHT/SIZE + 1;
+    constexpr static uint32_t numTilesMiddleY = numTilesY - 2;
+    constexpr static uint32_t INSTANCE_COUNT = numTilesX*numTilesY;
+
+    struct FluidData {
+        Matrix<float, INSTANCE_COUNT, numTilesX> density{}, velX{}, velY{};
+    };
+
+    enum BoundConfig {
+        REGULAR, MIRROR_X, MIRROR_Y
+    };
 
     explicit FluidSimulation(GLFWwindow* glfwWindow): window(glfwWindow) {
         // Initialize glfw
@@ -168,21 +182,38 @@ public:
         glDeleteShader(fragmentShader);
     }
 
+    void initializeObjects(){
+        for (uint32_t i = 0; i < grid.size(); i++) {
+            curState.velX[i] = 0.0f;
+            curState.velY[i] = 0.0f;
+            curState.density[i] = 0.0f;
+            prevState.velX[i] = 0.0f;
+            prevState.velY[i] = 0.0f;
+            prevState.density[i] = 0.0f;
+        }
+    }
 
     void createMainLoop(){
         createShaders();
 
+        initializeObjects();
+
+
         loop = [this] {
+            static auto currentTime = std::chrono::high_resolution_clock::now();
+            auto newTime = std::chrono::high_resolution_clock::now();
+            float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime).count();
+            currentTime = newTime;
 
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
+            updateGrid(deltaTime);
 
-            // draw our first triangle
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) std::cout << "FPS: " << 1/deltaTime << "\n";
+
             glUseProgram(shaderProgram);
             grid.render();
-
-
 
             glfwSwapBuffers(window);
             glfwPollEvents();
@@ -190,11 +221,165 @@ public:
 
     }
 
+    void updateGrid(float deltaTime) {
+        addExternalForces(deltaTime);
+        updateVelocities(deltaTime);
+        updateDensities(deltaTime);
+
+        for (uint32_t i = 0; i < grid.size(); i++){
+            curState.density[i] = std::clamp(curState.density[i] - deltaTime*dissolveFactor, 0.0f, 1.0f);
+            grid.updateColor(i,curState.density[i]);
+        }
+
+        grid.updateBuffer();
+    }
+
+    void addExternalForces(float deltaTime) {
+        static double prevPos[2]{0.0f,0.0f};
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+        y = HEIGHT - y;
+
+        auto i = (uint32_t) (x/SIZE), j = (uint32_t) (y/SIZE);
+        if (x > 0 && x < WIDTH && y > 0 && y < HEIGHT) {
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+                curState.density(i, j) += 0.6;
+            }
+
+            curState.velX(i, j) = initialSpeed*deltaTime*float(x - prevPos[0]);
+            curState.velY(i, j) = initialSpeed*deltaTime*float(y - prevPos[1]);
+        }
+
+        prevPos[0] = x;
+        prevPos[1] = y;
+
+    }
+
+    void updateDensities(float deltaTime) {
+        curState.density.swap(prevState.density);
+        diffuse(curState.density, prevState.density, diffusionFactor, deltaTime);
+        curState.density.swap(prevState.density);
+        advect(curState.density, prevState.density, curState.velX, curState.velY, deltaTime);
+    }
+
+    void updateVelocities(float deltaTime) {
+        curState.velX.swap(prevState.velX);
+        curState.velY.swap(prevState.velY);
+        diffuse(curState.velX, prevState.velX, viscosity, deltaTime);
+        diffuse(curState.velY, prevState.velY, viscosity, deltaTime);
+
+        project(curState.velX, curState.velY, prevState.velX, prevState.velY);
+
+        curState.velX.swap(prevState.velX);
+        curState.velY.swap(prevState.velY);
+        advect(curState.velX, prevState.velX, prevState.velX, prevState.velY, deltaTime, MIRROR_X);
+        advect(curState.velY, prevState.velY, prevState.velX, prevState.velY, deltaTime, MIRROR_Y);
+
+        project(curState.velX, curState.velY, prevState.velX, prevState.velY);
+    }
+
+    static void diffuse(Matrix<float, INSTANCE_COUNT, numTilesX>& x, const Matrix<float, INSTANCE_COUNT, numTilesX>& x0, float diff, float dt){
+        float a = dt*diff* (float) (numTilesMiddleY*numTilesMiddleX);
+        for (uint32_t k = 0; k < 20; ++k) {
+            for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
+                for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+                    x(i,j) = (x0(i,j) + a*(x(i-1,j) + x(i+1,j) + x(i,j-1) + x(i,j+1)))/(1+4*a);
+                }
+            }
+            setBounds(x, REGULAR);
+        }
+    }
+
+    static void advect(Matrix<float, INSTANCE_COUNT, numTilesX>& d, const Matrix<float, INSTANCE_COUNT, numTilesX>& d0, const Matrix<float, INSTANCE_COUNT, numTilesX>& velX, const Matrix<float, INSTANCE_COUNT, numTilesX>& velY, float dt, BoundConfig b = REGULAR){
+        int i0, j0, i1, j1;
+        float x, y, s0, t0, s1, t1;
+        auto fNX = (float) numTilesMiddleX;
+        auto fNY = (float) numTilesMiddleY;
+        float dt0X = dt*fNX;
+        float dt0Y = dt*fNY;
+
+        for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
+            for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+                x = (float) i - dt0X*velX(i, j);
+                if (x < 0.5f) x = 0.5f;
+                if (x > fNX + 0.5f) x = fNX + 0.5f;
+                y = (float) j - dt0Y*velY(i, j);
+                if (y < 0.5f) y = 0.5f;
+                if (y > fNX + 0.5f) y = fNY + 0.5f;
+                i0 = (int) x;
+                i1 = i0 + 1;
+                j0 = (int) y;
+                j1 = j0 + 1;
+                s1 = x - (float) i0;
+                t1 = y - (float) j0;
+                s0 = 1 - s1;
+                t0 = 1 - t1;
+
+                d(i, j) = s0*(t0*d0(i0, j0) + t1*d0(i0, j1)) + s1*(t0*d0(i1, j0) + t1*d0(i1, j1));
+            }
+        }
+        setBounds(d, b);
+    }
+
+    static void project(Matrix<float, INSTANCE_COUNT, numTilesX> &velX, Matrix<float, INSTANCE_COUNT, numTilesX> &velY, Matrix<float, INSTANCE_COUNT, numTilesX> &div, Matrix<float, INSTANCE_COUNT, numTilesX> &p) {
+        float h = 1/(float) std::min(numTilesMiddleX, numTilesMiddleY);
+
+        for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
+            for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+                div(i, j) = -0.5f*h*(velX(i + 1, j) - velX(i - 1, j) + velY(i, j + 1) - velY(i, j - 1));
+                p(i, j) = 0;
+            }
+        }
+        setBounds(div);
+        setBounds(p);
+
+
+        for (uint32_t k = 0; k < 20; ++k) {
+            for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
+                for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+                    p(i,j) = (div(i,j) + p(i + 1,j) + p(i - 1,j) + p(i,j + 1) + p(i,j - 1))/4;
+                }
+            }
+            setBounds(p);
+        }
+
+        for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
+            for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+                velX(i,j) -= 0.5f*(p(i + 1,j) - p(i - 1,j))/h;
+                velY(i,j) -= 0.5f*(p(i,j + 1) - p(i,j - 1))/h;
+            }
+        }
+        setBounds(velX, MIRROR_X);
+        setBounds(velY, MIRROR_Y);
+
+    }
+
+    static void setBounds(Matrix<float, INSTANCE_COUNT, numTilesX>& x, BoundConfig b = REGULAR) {
+        for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
+            x(i, 0) = (b == MIRROR_Y) ? -x(i, 1) : x(i, 1);
+            x(i, numTilesMiddleY+1) = (b == MIRROR_Y) ? -x(i, numTilesMiddleY) : x(i, numTilesMiddleY);
+        }
+        for (uint32_t i = 1; i <= numTilesMiddleY; ++i) {
+            x(0, i) = (b == MIRROR_X) ? -x(1, i) : x(1, i);
+            x(numTilesMiddleX+1, i) = (b == MIRROR_X) ? -x(numTilesMiddleX, i) : x(numTilesMiddleX, i);
+        }
+
+
+        x(0, 0) = 0.5f*(x(1, 0)+x(0, 1));
+        x(0, numTilesMiddleY+1) = 0.5f*(x(1, numTilesMiddleY+1)+x(0, numTilesMiddleY));
+        x(numTilesMiddleX+1, 0) = 0.5f*(x(numTilesMiddleX, 0)+x(numTilesMiddleX+1, 1));
+        x(numTilesMiddleX+1, numTilesMiddleY+1) = 0.5f*(x(numTilesMiddleX, numTilesMiddleY+1)+x(numTilesMiddleX+1, numTilesMiddleY));
+    }
+
+
 
 private:
     GLFWwindow* window = nullptr;
     GLuint shaderProgram{};
     Grid2D grid{};
+
+    FluidData curState, prevState;
+    float viscosity = 0.005f, diffusionFactor = 0.001f, dissolveFactor = 0.010f, initialSpeed = 60.0f;
 };
 
 
