@@ -16,9 +16,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 if (NOT DEFINED EMSCRIPTEN)
 
-    add_executable(WasmFluidSimulation main.cpp external/glad.c)
+    add_executable(WasmFluidSimulation main.cpp external/glad.c Grid2D.h Grid2D.cpp)
 else()
-    add_executable(WasmFluidSimulation main.cpp)
+    add_executable(WasmFluidSimulation main.cpp Grid2D.h Grid2D.cpp)
 endif (NOT DEFINED EMSCRIPTEN)
 
     target_link_libraries(WasmFluidSimulation glfw dl)

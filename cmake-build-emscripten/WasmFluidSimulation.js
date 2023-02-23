@@ -6556,10 +6556,6 @@ var ASM_CONSTS = {
       return GLFW.destroyWindow(winid);
     }
 
-  function _glfwGetCursorPos(winid, x, y) {
-      GLFW.getCursorPos(winid, x, y);
-    }
-
   function _glfwInit() {
       if (GLFW.windows) return 1; // GL_TRUE
   
@@ -7140,7 +7136,6 @@ var asmLibraryArg = {
   "glVertexAttribPointer": _glVertexAttribPointer,
   "glfwCreateWindow": _glfwCreateWindow,
   "glfwDestroyWindow": _glfwDestroyWindow,
-  "glfwGetCursorPos": _glfwGetCursorPos,
   "glfwInit": _glfwInit,
   "glfwMakeContextCurrent": _glfwMakeContextCurrent,
   "glfwPollEvents": _glfwPollEvents,

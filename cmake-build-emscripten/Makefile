@@ -129,6 +129,30 @@ WasmFluidSimulation/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/build
 .PHONY : WasmFluidSimulation/fast
 
+Grid2D.o: Grid2D.cpp.o
+.PHONY : Grid2D.o
+
+# target to build an object file
+Grid2D.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/Grid2D.cpp.o
+.PHONY : Grid2D.cpp.o
+
+Grid2D.i: Grid2D.cpp.i
+.PHONY : Grid2D.i
+
+# target to preprocess a source file
+Grid2D.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/Grid2D.cpp.i
+.PHONY : Grid2D.cpp.i
+
+Grid2D.s: Grid2D.cpp.s
+.PHONY : Grid2D.s
+
+# target to generate assembly for a file
+Grid2D.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/Grid2D.cpp.s
+.PHONY : Grid2D.cpp.s
+
 main.o: main.cpp.o
 .PHONY : main.o
 
@@ -162,6 +186,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... WasmFluidSimulation"
+	@echo "... Grid2D.o"
+	@echo "... Grid2D.i"
+	@echo "... Grid2D.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

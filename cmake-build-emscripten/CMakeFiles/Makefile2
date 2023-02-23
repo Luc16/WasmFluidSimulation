@@ -81,12 +81,12 @@ clean: CMakeFiles/WasmFluidSimulation.dir/clean
 CMakeFiles/WasmFluidSimulation.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/WasmFluidSimulation.dir/build.make CMakeFiles/WasmFluidSimulation.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/luc/CLionProjects/WasmFluidSimulation/cmake-build-emscripten/CMakeFiles --progress-num=1,2 "Built target WasmFluidSimulation"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/luc/CLionProjects/WasmFluidSimulation/cmake-build-emscripten/CMakeFiles --progress-num=1,2,3 "Built target WasmFluidSimulation"
 .PHONY : CMakeFiles/WasmFluidSimulation.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/WasmFluidSimulation.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/luc/CLionProjects/WasmFluidSimulation/cmake-build-emscripten/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/luc/CLionProjects/WasmFluidSimulation/cmake-build-emscripten/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/WasmFluidSimulation.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/luc/CLionProjects/WasmFluidSimulation/cmake-build-emscripten/CMakeFiles 0
 .PHONY : CMakeFiles/WasmFluidSimulation.dir/rule
