@@ -1,6 +1,7 @@
 #include <iostream>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 #else
@@ -73,9 +74,9 @@ const char *fragmentShaderSourceWeb = "precision mediump float;"
 class FluidSimulation {
 public:
     static std::function<void()> loop;
-    static constexpr int WIDTH = 640;
-    static constexpr int HEIGHT = 480;
-    static constexpr uint32_t SIZE = 10;
+    static constexpr int WIDTH = 450;
+    static constexpr int HEIGHT = 810;
+    static constexpr uint32_t SIZE = 15;
     constexpr static uint32_t numTilesX = WIDTH/SIZE + 1;
     constexpr static uint32_t numTilesMiddleX = numTilesX - 2;
     constexpr static uint32_t numTilesY = HEIGHT/SIZE + 1;
@@ -198,19 +199,17 @@ public:
 
         initializeObjects();
 
-
         loop = [this] {
             static auto currentTime = std::chrono::high_resolution_clock::now();
             auto newTime = std::chrono::high_resolution_clock::now();
             float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(newTime - currentTime).count();
             currentTime = newTime;
+            deltaT = deltaTime;
 
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
             updateGrid(deltaTime);
-
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) std::cout << "FPS: " << 1/deltaTime << "\n";
 
             glUseProgram(shaderProgram);
             grid.render();
@@ -227,7 +226,7 @@ public:
         updateDensities(deltaTime);
 
         for (uint32_t i = 0; i < grid.size(); i++){
-            curState.density[i] = std::clamp(curState.density[i] - deltaTime*dissolveFactor, 0.0f, 1.0f);
+            curState.density[i] = std::clamp(curState.density[i] - deltaTime*dissolveFactor, 0.0f, 2.0f);
             grid.updateColor(i,curState.density[i]);
         }
 
@@ -248,10 +247,11 @@ public:
 
             curState.velX(i, j) = initialSpeed*deltaTime*float(x - prevPos[0]);
             curState.velY(i, j) = initialSpeed*deltaTime*float(y - prevPos[1]);
+
+            prevPos[0] = x;
+            prevPos[1] = y;
         }
 
-        prevPos[0] = x;
-        prevPos[1] = y;
 
     }
 
@@ -279,7 +279,7 @@ public:
     }
 
     static void diffuse(Matrix<float, INSTANCE_COUNT, numTilesX>& x, const Matrix<float, INSTANCE_COUNT, numTilesX>& x0, float diff, float dt){
-        float a = dt*diff* (float) (numTilesMiddleY*numTilesMiddleX);
+        float a = dt*diff*(float)(numTilesMiddleY*numTilesMiddleX);
         for (uint32_t k = 0; k < 20; ++k) {
             for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
                 for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
@@ -295,17 +295,16 @@ public:
         float x, y, s0, t0, s1, t1;
         auto fNX = (float) numTilesMiddleX;
         auto fNY = (float) numTilesMiddleY;
-        float dt0X = dt*fNX;
-        float dt0Y = dt*fNY;
+        float dt0 = dt*std::min(fNX, fNY);
 
         for (uint32_t j = 1; j <= numTilesMiddleY; ++j) {
             for (uint32_t i = 1; i <= numTilesMiddleX; ++i) {
-                x = (float) i - dt0X*velX(i, j);
+                x = (float) i - dt0*velX(i, j);
                 if (x < 0.5f) x = 0.5f;
                 if (x > fNX + 0.5f) x = fNX + 0.5f;
-                y = (float) j - dt0Y*velY(i, j);
+                y = (float) j - dt0*velY(i, j);
                 if (y < 0.5f) y = 0.5f;
-                if (y > fNX + 0.5f) y = fNY + 0.5f;
+                if (y > fNY + 0.5f) y = fNY + 0.5f;
                 i0 = (int) x;
                 i1 = i0 + 1;
                 j0 = (int) y;
@@ -372,22 +371,43 @@ public:
     }
 
 
-
-private:
+public:
     GLFWwindow* window = nullptr;
     GLuint shaderProgram{};
     Grid2D grid{};
 
     FluidData curState, prevState;
-    float viscosity = 0.005f, diffusionFactor = 0.001f, dissolveFactor = 0.010f, initialSpeed = 60.0f;
+    float viscosity = 0.005f, diffusionFactor = 0.001f, dissolveFactor = 0.02f, initialSpeed = 60.0f, deltaT;
 };
 
 
 std::function<void()> FluidSimulation::loop;
 void mainLoop() { FluidSimulation::loop(); }
 
+#ifdef EMSCRIPTEN
+EM_BOOL onTouchMove(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData){
+    static double prevPos[2]{0.0f,0.0f};
+    auto sim = (FluidSimulation *) userData;
+    auto x = (float) touchEvent->touches[0].targetX;
+    auto y = (float) touchEvent->touches[0].targetY;
+    y = FluidSimulation::HEIGHT - y;
+
+    auto i = (uint32_t) (x/FluidSimulation::SIZE), j = (uint32_t) (y/FluidSimulation::SIZE);
+    if (x > 0 && x < FluidSimulation::WIDTH && y > 0 && y < FluidSimulation::HEIGHT) {
+        sim->curState.density(i, j) += 2.0f;
+
+        sim->curState.velX(i, j) = 20*sim->deltaT*float(x - prevPos[0]);
+        sim->curState.velY(i, j) = 20*sim->deltaT*float(y - prevPos[1]);
+
+        prevPos[0] = x;
+        prevPos[1] = y;
+    }
+    return true;
+}
+#endif
+
 int main() {
-    std::cout << "Starting" << std::endl;
+    std::cout << "Starting 3" << std::endl;
     GLFWwindow* window = nullptr;
 
 
@@ -397,14 +417,14 @@ int main() {
     example.createMainLoop();
 
 #ifdef EMSCRIPTEN
+    emscripten_set_touchmove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, &example, 1, &onTouchMove);
+    emscripten_set_touchstart_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, &example, 1, &onTouchMove);
     // Define a mail loop function, that will be called as fast as possible
     emscripten_set_main_loop(&mainLoop, 0, 1);
 #else
-    // This is the normal C/C++ main loop
     example.glfwLoop();
 #endif
 
-    // Tear down the system
     std::cout << "Loop ended" << std::endl;
 
 

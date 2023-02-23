@@ -610,6 +610,10 @@ CMakeFiles/WasmFluidSimulation.dir/main.cpp.o: ../main.cpp \
   /usr/share/emscripten/cache/sysroot/include/emscripten/em_js.h \
   /usr/share/emscripten/cache/sysroot/include/emscripten/wget.h \
   /usr/share/emscripten/cache/sysroot/include/emscripten/version.h \
+  /usr/share/emscripten/cache/sysroot/include/emscripten/html5.h \
+  /usr/share/emscripten/cache/sysroot/include/emscripten/eventloop.h \
+  /usr/share/emscripten/cache/sysroot/include/emscripten/console.h \
+  /usr/share/emscripten/cache/sysroot/include/emscripten/html5_webgl.h \
   ../external/glfw-3.3.8/include/GLFW/glfw3.h \
   /usr/share/emscripten/cache/sysroot/include/GL/gl.h \
   /usr/share/emscripten/cache/sysroot/include/GL/glext.h \
@@ -619,6 +623,12 @@ CMakeFiles/WasmFluidSimulation.dir/main.cpp.o: ../main.cpp \
   ../Grid2D.h \
   /usr/share/emscripten/cache/sysroot/include/c++/v1/array
 
+
+/usr/share/emscripten/cache/sysroot/include/emscripten/console.h:
+
+/usr/share/emscripten/cache/sysroot/include/emscripten/eventloop.h:
+
+/usr/share/emscripten/cache/sysroot/include/emscripten/html5.h:
 
 ../main.cpp:
 
@@ -997,6 +1007,8 @@ CMakeFiles/WasmFluidSimulation.dir/main.cpp.o: ../main.cpp \
 /usr/share/emscripten/cache/sysroot/include/c++/v1/__iterator/istreambuf_iterator.h:
 
 /usr/share/emscripten/cache/sysroot/include/string.h:
+
+/usr/share/emscripten/cache/sysroot/include/emscripten/html5_webgl.h:
 
 /usr/share/emscripten/cache/sysroot/include/c++/v1/__functional/binder1st.h:
 
