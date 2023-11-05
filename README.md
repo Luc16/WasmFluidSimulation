@@ -4,7 +4,7 @@ This is a simple fluid simulation implementation. The main idea is to use a grid
 
 ## [Demo](https://luc16.github.io)
 
-The [Demo](https://luc16.github.io) can be accessed and played with, to generate
+The [Demo](https://luc16.github.io) can be accessed and played with. To generate
 fluid drag the mouse (or finger if on touch screen) to generate
 smoke-like fluid.
 
