@@ -11,6 +11,7 @@ smoke-like fluid.
 <p align="center">
     <img src="wasm_fluid.gif" alt="">
 </p>
+
 ## References
 
 The ideas and algorithm used in this simulation were based on these papers:
