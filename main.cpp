@@ -5,7 +5,7 @@
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 #else
-#include <glad/glad.h>
+#include "external/glad.h"
 #endif
 #include <GLFW/glfw3.h>
 #include <functional>
